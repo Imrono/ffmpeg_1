@@ -65,7 +65,7 @@ void VRG_ROIInfo_Release(void **handle);
 int VRG_ROIDet_Init(void *handle, int *in_para);
 int VRG_ROIDet_Run(void *handle, unsigned char *in_ImageData, unsigned char *in_ImageMask, s_ROI_Table *out_ROI_table);
 int VRG_ROIClass_Init(void *handle,char *filename_human, char *filename_car);
-int VRG_ROIClass_Run(void *handle, int *in_para,unsigned char *ROIImg);
+int VRG_ROIClass_Run(void *handle, int *in_para, unsigned char *ROIImg);
 
 char *VRG_HumanInfo_Version();
 void *VRG_HumanInfo_Create(int *in_para);

@@ -1,16 +1,16 @@
 #include <iostream>
 using namespace std;
 extern "C" {
-#include "libavcodec/avcodec.h"
-#include "libavformat/avformat.h"
-#include "libavfilter/avfiltergraph.h"
-#include "libavfilter/buffersink.h"
-#include "libavfilter/buffersrc.h"
-#include "libavutil/avutil.h"
-#include "libavutil/opt.h"
-#include "libavutil/pixdesc.h"
-#include "libswscale/swscale.h"
-#include "libavutil/imgutils.h"
+#include <libavcodec/avcodec.h>
+#include <libavformat/avformat.h>
+#include <libavfilter/avfiltergraph.h>
+#include <libavfilter/buffersink.h>
+#include <libavfilter/buffersrc.h>
+#include <libavutil/avutil.h>
+#include <libavutil/opt.h>
+#include <libavutil/pixdesc.h>
+#include <libswscale/swscale.h>
+#include <libavutil/imgutils.h>
 #include <jpeglib.h>
 #include "VAP_Common.h"
 }
@@ -41,10 +41,15 @@ int main(int argc, char **argv) {
 		cout << "VRG_ROIClass_Init failed " << endl;
 		cout << "with filename_human: " << filename_human << endl;
 		cout << "with filename_car  : " << filename_car << endl;
+		return 1;
 	}
-	if (-1 == VRG_ROIDet_Init(roiHandler, in_para))
+	if (-1 == VRG_ROIDet_Init(roiHandler, in_para)) {
 		cout << "VRG_ROIDet_Init failed" << endl;
-
+		return 1;
+	}
+	unsigned char *imageMask = nullptr;
+	s_ROI_Table ROI_table;
+	s_Human_Feature *human_feature = nullptr;
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 	int inSecond = 0;
@@ -94,13 +99,13 @@ int main(int argc, char **argv) {
 			ret = AVERROR(ENOMEM);
 			goto END;
 		}
-
 		ret = avcodec_decode_video2(ifmt_ctx->streams[stream_index]->codec, frame, &got_frame, &packet);
 		if (ret < 0) {
 			av_frame_free(&frame);
 			av_log(NULL, AV_LOG_ERROR, "Decoding failed\n");
 			goto END;
 		}
+
 		if (got_frame) {
 			numBytes = avpicture_get_size(AV_PIX_FMT_BGR24, codecCtxDec->width,
 					codecCtxDec->height);
@@ -120,7 +125,24 @@ int main(int argc, char **argv) {
 			//SaveFrameToJPG(szPicFile, pFrameRGB->data[0], codecCtxDec->width, codecCtxDec->height);
 			//SaveFrameToBMP(szPicFile, pFrameRGB->data[0], codecCtxDec->width, codecCtxDec->height, 24);
 			//SaveFrameToPPM(szPicFile, pFrameRGB, codecCtxDec->width, codecCtxDec->height);
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+			imageMask = new unsigned char[codecCtxDec->height*codecCtxDec->width*3];
+			int numRoi = VRG_ROIDet_Run(roiHandler, pFrameRGB->data[0], imageMask, &ROI_table);
+			if (-1 == numRoi) {
+				cout << "numRoi: -1, ERROR" << endl;
+			} else {
+				for (int i = 0; i < ROI_table.ObjNum; i++) {
+					int roiRet = VRG_ROIClass_Run(roiHandler, in_para, ROI_table.ImgData);
+					if (1 == roiRet) {  		//人体
+						VRG_HumanFeature(humanHandler, in_para, ROI_table.ImgData, ROI_table.MaskData, human_feature);
+					} else if (2 == roiRet) {	//车辆
+					} else {}
+				}
+			}
 
+			delete []imageMask;
+			imageMask = nullptr;
+///////////////////////////////////////////////////////////////////////////////////////////////////////
 			av_frame_free(&pFrameRGB);
 			av_free(pBuffer);
 			sws_freeContext(img_convert_ctx);

@@ -1,0 +1,6 @@
+eclipse.preferences.version=1
+environment/project/cdt.managedbuild.config.gnu.cross.exe.debug.1810727788/PATH/delimiter=\:
+environment/project/cdt.managedbuild.config.gnu.cross.exe.debug.1810727788/PATH/operation=replace
+environment/project/cdt.managedbuild.config.gnu.cross.exe.debug.1810727788/PATH/value=/bin\:/opt/Qt5.6.0/5.6/gcc_64/bin\:/usr/local/sbin\:/usr/local/bin\:/usr/sbin\:/usr/bin\:/sbin\:/usr/games\:/usr/local/games\:/snap/bin\:/home/kang/ffmpeg-3.0.1/lib
+environment/project/cdt.managedbuild.config.gnu.cross.exe.debug.1810727788/append=true
+environment/project/cdt.managedbuild.config.gnu.cross.exe.debug.1810727788/appendContributed=true
