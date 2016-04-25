@@ -14,6 +14,7 @@ extern "C" {
 #include <jpeglib.h>
 #include "VAP_Common.h"
 }
+#define nullptr NULL
 
 int open_input_file(const char *filename, AVFormatContext **in_fmt_ctx,
 		int &nVideoStream);
@@ -23,8 +24,29 @@ int SaveFrameToBMP(char *picFile, uint8_t *pRGBBuffer, int nWidth, int nHeight,
 int SaveFrameToPPM(char *picFile, AVFrame *pFrame, int nWidth, int nHeight);
 
 int main(int argc, char **argv) {
-	cout << "VRG_ROIInfo_Version:" << VRG_ROIInfo_Version() << endl;
+	cout << "VRG_ROIInfo_Version:  " << VRG_ROIInfo_Version()   << endl;
+	cout << "VRG_HumanInfo_Version:" << VRG_HumanInfo_Version() << endl;
+	int in_para[1] = {0};
+	void *roiHandler =  VRG_ROIInfo_Create(in_para);
+	if (nullptr == roiHandler) {
+		cout << "VRG_ROIInfo_Create failed" << endl;
+	}
+	void *humanHandler = VRG_HumanInfo_Create(in_para);
+	if (nullptr == humanHandler) {
+		cout << "VRG_HumanInfo_Create failed" << endl;
+	}
+	char filename_human[] = "/home/kang/workspace/vapData/VAP_Human.data";
+	char filename_car[]   = "/home/kang/workspace/vapData/VAP_Car.data";
+	if (-1 == VRG_ROIClass_Init(roiHandler, filename_human, filename_car)) {
+		cout << "VRG_ROIClass_Init failed " << endl;
+		cout << "with filename_human: " << filename_human << endl;
+		cout << "with filename_car  : " << filename_car << endl;
+	}
+	if (-1 == VRG_ROIDet_Init(roiHandler, in_para))
+		cout << "VRG_ROIDet_Init failed" << endl;
 
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 	int inSecond = 0;
 	cout << "start second" << endl;
 	cin >> inSecond;
@@ -44,8 +66,7 @@ int main(int argc, char **argv) {
 	int numBytes;
 	AVFrame *pFrameRGB = NULL;
 	struct SwsContext *img_convert_ctx;
-
-	cout << "VRG_ROIInfo_Version:" << VRG_ROIInfo_Version() << endl;
+///////////////////////////////////////////////////////////////////////////////
 //1. register all formats and codecs
 	av_register_all();
 
@@ -60,13 +81,7 @@ int main(int argc, char **argv) {
 	}
 
 	av_init_packet(&packet);
-	while (true) {
-//4. av_read_frame - 读取码流中的音频若干帧或者视频一帧。
-//					 解码视频的时候，每解码一个视频帧，需要先调用av_read_frame()获得一帧视频的压缩数据，
-//					 然后才能对该数据进行解码。
-		if ((ret = av_read_frame(ifmt_ctx, &packet)) < 0)
-			goto END;
-
+	while (av_read_frame(ifmt_ctx, &packet) < 0) {
 		stream_index = packet.stream_index;
 		type = ifmt_ctx->streams[packet.stream_index]->codec->codec_type;
 		codecCtxDec = ifmt_ctx->streams[nVideoStream]->codec;
@@ -74,23 +89,19 @@ int main(int argc, char **argv) {
 		if (type != AVMEDIA_TYPE_VIDEO)
 			continue;
 
-//5. av_frame_alloc - AVFrame的初始化函数1
 		frame = av_frame_alloc();
 		if (!frame) {
 			ret = AVERROR(ENOMEM);
 			goto END;
 		}
 
-//6. avcodec_decode_video2 - 输入一个压缩编码的结构体AVPacket，输出一个解码后的结构体AVFrame
-		ret = avcodec_decode_video2(ifmt_ctx->streams[stream_index]->codec,
-				frame, &got_frame, &packet);
+		ret = avcodec_decode_video2(ifmt_ctx->streams[stream_index]->codec, frame, &got_frame, &packet);
 		if (ret < 0) {
 			av_frame_free(&frame);
 			av_log(NULL, AV_LOG_ERROR, "Decoding failed\n");
 			goto END;
 		}
 		if (got_frame) {
-//7. 为RGB图片分配内存，并初始化
 			numBytes = avpicture_get_size(AV_PIX_FMT_BGR24, codecCtxDec->width,
 					codecCtxDec->height);
 			pBuffer = (uint8_t *) av_malloc(numBytes * sizeof(uint8_t));
@@ -99,17 +110,15 @@ int main(int argc, char **argv) {
 					AV_PIX_FMT_BGR24/*AV_PIX_FMT_RGB24*/, codecCtxDec->width,
 					codecCtxDec->height);
 
-//8. 得到RGB24数据
 			img_convert_ctx = sws_getContext(codecCtxDec->width,
 					codecCtxDec->height, codecCtxDec->pix_fmt,
 					codecCtxDec->width, codecCtxDec->height, AV_PIX_FMT_BGR24,
 					SWS_BILINEAR, NULL, NULL, NULL);
-//9. pFrameAV -> pFrameRGB
+
 			sws_scale(img_convert_ctx, frame->data, frame->linesize, 0,
 					codecCtxDec->height, pFrameRGB->data, pFrameRGB->linesize);
-			SaveFrameToJPG(szPicFile, pFrameRGB->data[0], codecCtxDec->width,
-					codecCtxDec->height);
-			//SaveFrameToBMP(szPicFile, pFrameRGB->data[0],  codecCtxDec->width, codecCtxDec->height, 24);
+			//SaveFrameToJPG(szPicFile, pFrameRGB->data[0], codecCtxDec->width, codecCtxDec->height);
+			//SaveFrameToBMP(szPicFile, pFrameRGB->data[0], codecCtxDec->width, codecCtxDec->height, 24);
 			//SaveFrameToPPM(szPicFile, pFrameRGB, codecCtxDec->width, codecCtxDec->height);
 
 			av_frame_free(&pFrameRGB);
@@ -124,6 +133,9 @@ int main(int argc, char **argv) {
 END:
 	av_packet_unref(&packet);
 	av_frame_free(&frame);
+
+	VRG_HumanInfo_Release(&humanHandler);
+	VRG_ROIInfo_Release(&roiHandler);
 	return 0;
 }
 
