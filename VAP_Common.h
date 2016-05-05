@@ -46,6 +46,7 @@ typedef struct ROI_TABLE
 }s_ROI_Table;
 
 //人体特征
+//颜色数量0~9分别对应 -> [0]红; [1]橙; [2]黄; [3]绿; [4]青; [5]蓝; [6]紫; [7]黑; [8]灰; [9]白
 typedef struct HUMAN_FEATURE
 {	
 	int color_up[CNUM];		//上半身颜色，color_up[i]表示上半身第i个颜色分量所占的百分比
